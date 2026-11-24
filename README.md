@@ -131,6 +131,44 @@ A Chinese-PII redaction filter for Open WebUI. Before your message leaves the br
 
 ---
 
+## 命令行版（处理文件，不开 Open WebUI 也能用）
+
+`tool/pii_tool.py` 用**同一套规则**处理文件，不做第二份实现。支持 `.txt`、`.md`、`.csv`（逐格，不动分隔符）、`.xlsx`（逐格，需要 `openpyxl`）。
+
+```bash
+# 先看会改哪几处，不动文件
+python tool/pii_tool.py preview 客户.csv
+
+# 出脱敏版 + 映射表
+python tool/pii_tool.py redact 客户.csv
+#   → 客户.redacted.csv
+#   → 客户.map.json
+
+# 需要时还原
+python tool/pii_tool.py restore 客户.redacted.csv --map 客户.map.json
+```
+
+实际跑起来是这样：
+
+```
+这张表里换掉 2 处：
+  PHONE       2 处
+
+脱敏版 → 客户.redacted.csv
+映射表 → 客户.map.json
+
+文件内容：
+姓名,手机,订单
+张伟,[PHONE_1],20261124001
+李娜,[PHONE_2],20261124002
+```
+
+**映射表里是真值**，别外传，用完删掉。还原是逐字的（`+86 139-0000-2222` 还原回来连横杠都在）。
+
+和插件的区别只有一个：插件在聊天里跑，工具处理文件；规则、校验、编号逻辑是同一份。
+
+---
+
 ## 反馈
 
 这个插件的规则是照着“能想到的写法”写的，真实世界一定还有没想到的。

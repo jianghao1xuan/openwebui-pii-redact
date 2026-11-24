@@ -1,5 +1,13 @@
 # openwebui-pii-redact
 
+> ## 🚫 只能在 Open WebUI 里用
+>
+> 这个仓库的主体 `filter.py` 是 **Open WebUI 的 Filter 插件**，靠 Open WebUI 的钩子（`inlet` / `outlet` / `stream`）跑起来。
+> **它不能用在 ChatGPT、Claude、LobeChat、Dify、SillyTavern、命令行或任何别的平台上**，下载了也没法单独运行。
+> 必须先在 Open WebUI 里装插件、打开 Active 和 Global，才会生效。
+>
+> 不装 Open WebUI 也想处理文件的话，用仓库里的 `tool/pii_tool.py`（命令行，见[下面那一节](#命令行版处理文件不开-open-webui-也能用)），或者等它单独拆成一个仓库。
+
 > ## ⚠️ 用之前先看这三行
 >
 > **这一版只覆盖八类有规则的写法，处理过的内容请复核一遍。**
@@ -12,7 +20,7 @@
 
 一句话：**你看到的还是真号，模型从头到尾只见到 `[PHONE_1]`。**
 
-> 适用于 Open WebUI 0.13.x，实测于 0.13.4。
+> 适用于 Open WebUI 0.13.x，实测于 0.13.4。**其它平台不支持。**
 
 ---
 

@@ -2,7 +2,7 @@
 title: 脱敏（手机号 / 身份证 / 银行卡 / 邮箱）
 author: jianghao1xuan
 version: 0.1.0
-description: 这一版只覆盖八类有规则的写法，处理过的内容请复核一遍。发出去之前把中文敏感信息换成占位符，回复到界面前再还原。映射只存内存。
+description: 只能在 Open WebUI 里用（Filter 插件，依赖它的 inlet/outlet/stream 钩子），别的平台装上无效。这一版只覆盖八类有规则的写法，处理过的内容请复核一遍。发出去之前把中文敏感信息换成占位符，回复到界面前再还原。映射只存内存。
 required_open_webui_version: 0.9.0
 """
 

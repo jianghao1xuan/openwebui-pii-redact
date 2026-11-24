@@ -1,0 +1,13 @@
+# 本地排查时才会产生的日志
+payload-log.jsonl
+openwebui-pii-redact.jsonl
+
+# 本机自用的小脚本（不发布）
+试一下.py
+试一下.bat
+test_pii.py
+试跑.py
+
+__pycache__/
+*.pyc
+.venv/

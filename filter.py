@@ -59,11 +59,14 @@ class Filter:
     _客服电话 = re.compile(r"(?<![\d])(?:400|800)[\s\-]?\d{3}[\s\-]?\d{4}(?![\d])")
     # 车牌：普通 7 位、新能源 8 位（字母后是 D/F）；2026-11-25 收紧，原来 8 位会误吃
     _车牌 = re.compile(
-        r"(?<![A-Za-z0-9\u4e00-\u9fa5])"
-        r"[京津冀晋蒙辽吉黑沪苏浙皖闽赣鲁豫鄂湘粤桂琼渝川贵云藏陕甘青宁新]"
-        r"[A-HJ-NP-Z]"
-        r"(?:[DF][A-HJ-NP-Z0-9]{5}|[A-HJ-NP-Z0-9]{4}[A-HJ-NP-Z0-9挂学警港澳])"
-        r"(?![A-Za-z0-9])")
+    r"(?<![A-Za-z0-9\u4e00-\u9fa5])"
+    r"[京津冀晋蒙辽吉黑沪苏浙皖闽赣鲁豫鄂湘粤桂琼渝川贵云藏陕甘青宁新]"
+    r"[A-HJ-NP-Z]"
+    r"(?:[DF][A-HJ-NP-Z0-9]{5}"          # 小型新能源：字母后 D/F + 5 位
+    r"|[A-HJ-NP-Z0-9]{4}[A-HJ-NP-Z0-9挂学警港澳]"   # 普通 7 位
+    r"|[A-HJ-NP-Z0-9]{5}[DF])"           # 大型新能源：末位 D/F（2026-11-25 补）
+    r"(?![A-Za-z0-9])")
+
     # 统一社会信用代码：18 位，字符集不含 I O S V Z
     _统一代码 = re.compile(r"(?<![0-9A-Z])[0-9A-HJ-NPQRTUWXY]{2}\d{6}[0-9A-HJ-NPQRTUWXY]{10}(?![0-9A-Z])")
     # 护照：E/G + 8 位数字
@@ -267,8 +270,16 @@ class Filter:
             return body
         场 = self._场(self._场键(body))
         for m in body.get("messages") or []:
-            if m.get("role") == "assistant" and isinstance(m.get("content"), str):
-                m["content"] = self._还原一段(m["content"], 场)
+            if m.get("role") != "assistant":
+                continue
+            内 = m.get("content")
+            if isinstance(内, str):
+                m["content"] = self._还原一段(内, 场)
+            elif isinstance(内, list):
+                # 2026-11-25 补：多模态 content 是 [{type:text,text:...}]，以前整段跳过
+                for 段 in 内:
+                    if isinstance(段, dict) and isinstance(段.get("text"), str):
+                        段["text"] = self._还原一段(段["text"], 场)
         if self.valves.log_payload:
             try:
                 路 = self._日志路()
@@ -283,7 +294,7 @@ class Filter:
                 pass
         return body
 
-    def _唯一活跃场(self, 秒: int = 300) -> str | None:
+    def _唯一活跃场(self, 秒: int = 90) -> str | None:
         """最近这段时间里只有一个场在动，才敢拿它还原；有两个以上就返回 None。
 
         2026-11-25 加。原来退回 self._上次场：单实例服务多用户时，
@@ -291,7 +302,8 @@ class Filter:
         """
         now = time.time()
         with self._锁:
-            活的 = [k for k, v in self._每场.items() if now - v.get("at", 0) <= 秒]
+            活的 = [k for k, v in self._每场.items()
+                   if k != "default" and now - v.get("at", 0) <= 秒]
         return 活的[0] if len(活的) == 1 else None
 
     @staticmethod

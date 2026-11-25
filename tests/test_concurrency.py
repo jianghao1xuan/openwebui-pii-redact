@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
-路 = Path(r"E:\AI-Assistant\mine\openwebui-脱敏\filter.py")
+路 = Path(__file__).resolve().parent.parent / "filter.py"
 spec = importlib.util.spec_from_file_location("f", 路)
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)

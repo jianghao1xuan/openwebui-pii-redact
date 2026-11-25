@@ -302,9 +302,12 @@ class Filter:
         """
         now = time.time()
         with self._锁:
-            活的 = [k for k, v in self._每场.items()
-                   if k != "default" and now - v.get("at", 0) <= 秒]
-        return 活的[0] if len(活的) == 1 else None
+            活的 = [k for k, v in self._每场.items() if now - v.get("at", 0) <= 秒]
+        # "default" 是没带 chat_id 的兜底场。只有它一个人的时候能用；
+        # 一旦有真会话在场，它就别参与判断（否则会把该还原的那个挤掉）。
+        真的 = [k for k in 活的 if k != "default"]
+        候选 = 真的 or 活的
+        return 候选[0] if len(候选) == 1 else None
 
     @staticmethod
     def _场键(body: dict) -> str:

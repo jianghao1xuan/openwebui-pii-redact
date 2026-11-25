@@ -108,12 +108,13 @@ class Filter:
             if 键 not in self._每场:
                 if len(self._每场) >= self._最大场数:
                     self._每场.pop(next(iter(self._每场)))
-                self._每场[键] = {"n": {}, "map": {}, "键": {}}
+                self._每场[键] = {"n": {}, "map": {}, "键": {}, "at": time.time()}
+            self._每场[键]["at"] = time.time()
             return self._每场[键]
 
     def _重置(self, 键: str) -> None:
         with self._锁:
-            self._每场[键] = {"n": {}, "map": {}, "键": {}}
+            self._每场[键] = {"n": {}, "map": {}, "键": {}, "at": time.time()}
 
     def _占位(self, 场: dict, 类: str, 原: str, 归一: str = "") -> str:
         # 同一个号码带不带空格横杠，算同一个占位符
@@ -248,7 +249,6 @@ class Filter:
     async def inlet(self, body: dict, __user__: Optional[dict] = None) -> dict:
         """一轮一次：清空这一场的计数和映射，然后把用户这句脱敏。"""
         键 = self._场键(body)
-        self._上次场 = 键
         self._重置(键)
         场 = self._场(键)
         return self._脱payload(body, 场)
@@ -256,7 +256,6 @@ class Filter:
     async def request(self, body: dict, __user__: Optional[dict] = None) -> dict:
         """每次发给模型都过一遍（工具调用一轮会来好几次）。占位符不会再被匹配，所以可重复跑。"""
         键 = self._场键(body)
-        self._上次场 = 键
         场 = self._场(键)
         体 = self._脱payload(body, 场)
         self._记一笔(键, 体)
@@ -283,8 +282,16 @@ class Filter:
                 pass
         return body
 
-    def _上一个场(self) -> str:
-        return getattr(self, "_上次场", "default")
+    def _唯一活跃场(self, 秒: int = 300) -> str | None:
+        """最近这段时间里只有一个场在动，才敢拿它还原；有两个以上就返回 None。
+
+        2026-11-25 加。原来退回 self._上次场：单实例服务多用户时，
+        A 的流式块会被 B 的映射还原，等于把别人的号码换进来。宁可漏还原，不能换错人。
+        """
+        now = time.time()
+        with self._锁:
+            活的 = [k for k, v in self._每场.items() if now - v.get("at", 0) <= 秒]
+        return 活的[0] if len(活的) == 1 else None
 
     @staticmethod
     def _场键(body: dict) -> str:
@@ -298,7 +305,11 @@ class Filter:
         """流式：SSE 每一块是 OpenAI 那种结构。占位符可能被拆开，尾巴先扣住。"""
         if not self.valves.restore:
             return event
-        场 = self._场(self._场键(event) if event.get("chat_id") else self._上一个场())
+        键 = self._场键(event) if event.get("chat_id") else self._唯一活跃场()
+        if not 键:
+            # 有别的会话在同时跑，说不清这块是谁的——不动它，宁可留着占位符
+            return event
+        场 = self._场(键)
         尾巴 = 场.get("tail", "")
         try:
             方向 = event.get("choices") or []
